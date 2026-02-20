@@ -5,6 +5,7 @@ Local stock quote API and web interface serving OHLCV data over HTTP, backed by 
 ## File Map
 
 ```
+Makefile                     # All build/serve/test targets — run `make help` for details
 slc_stock/
   __init__.py
   __main__.py              # Entry point for `python -m slc_stock.cli`
@@ -30,7 +31,7 @@ slc_stock/
       search_results.html    # htmx partial: search result snippet
       quote_result.html      # htmx partial: single quote display
       cache_status.html      # htmx partial: system status panel
-      chart_data.html        # htmx partial: script tag with chart data
+      chart_data.html        # htmx partial: chart data as JSON data attributes
       compare_results.html   # htmx partial: provider comparison table
   static/
     style.css                # Minimal CSS with light/dark mode (prefers-color-scheme)
@@ -41,6 +42,16 @@ tests/
   test_api.py              # Integration tests for /api/v1/ routes
   test_web.py              # Smoke tests for web UI routes and htmx partials
   test_cli.py              # CLI command tests
+  functional/
+    Dockerfile             # Test container: Python 3.11 + Playwright + Chromium
+    requirements.txt       # Functional test deps (pytest, playwright)
+    conftest.py            # Server/seeded_server fixtures, .env safety check
+    helpers.py             # Server context manager, DB seeding, API request helpers
+    test_api.py            # 16 tests: all /api/v1/ JSON endpoints
+    test_dashboard.py      # 12 tests: dashboard page, search, status panel
+    test_symbol.py         # 17 tests: chart, range buttons, date picker, prefetch, cache
+    test_compare.py        #  7 tests: comparison page form and results
+    test_navigation.py     #  5 tests: cross-page navigation flows
 ```
 
 ## Route Structure
@@ -71,7 +82,8 @@ Server-rendered pages in `web.py`:
 | `/ui/search` | `partials/search_results.html` | htmx: symbol search |
 | `/ui/quote/<sym>/<date>` | `partials/quote_result.html` | htmx: single quote |
 | `/ui/cache-status` | `partials/cache_status.html` | htmx: sidebar auto-refresh |
-| `/ui/chart-data/<sym>` | `partials/chart_data.html` | htmx: chart data injection |
+| `/ui/chart-data/<sym>` | `partials/chart_data.html` | htmx: chart data (JSON in data attrs) |
+| `/ui/prefetch/<sym>` | (inline HTML) | htmx: trigger prefetch, return HTML feedback |
 | `/ui/compare` | `partials/compare_results.html` | htmx: comparison table |
 
 ### Service Singleton
@@ -115,8 +127,10 @@ Alpha Vantage and Polygon providers wrap API calls with retry-on-rate-limit logi
 ### Web UI Tech Stack
 
 - **Jinja2** templates with `{% extends "base.html" %}` inheritance
-- **htmx** for partial page updates (loaded from CDN with SRI hash)
-- **Chart.js** for price history line charts (loaded from CDN with SRI hash)
+- **htmx 2.x** for partial page updates (loaded from CDN with SRI hash)
+  - htmx 2.x does NOT execute `<script>` tags in swapped content by default; chart data is passed via data attributes and rendered via an `htmx:afterSwap` event listener
+- **Chart.js 4.x** for price history line charts (loaded from CDN with SRI hash)
+  - Chart range buttons pass integer `days` (not fractional years) to the `/ui/chart-data/<sym>?days=N` endpoint
 - **Custom CSS** (`static/style.css`) with light/dark mode via `prefers-color-scheme`
 - No build step, no npm, no JavaScript framework — everything is server-rendered with progressive enhancement
 
@@ -165,13 +179,43 @@ All in `config.py`, loaded from environment / `.env`:
 
 ## Running
 
+All common workflows are available via the Makefile. Run `make help` for a full list.
+
 ```bash
-# API server + web UI
-python -m slc_stock.app
+# API server + web UI on port 8080
+make serve
 
-# CLI
-python -m slc_stock.cli --help
+# Unit/integration tests (local, no Docker)
+make unittest
 
-# Tests
-python -m pytest tests/ -v
+# Functional tests in Docker (Playwright + Chromium)
+make test              # TTY attached, coloured output
+make test-notty        # No TTY, for CI/agents
+
+# Target specific functional tests
+make test-notty PYTEST_ARGS="-k test_chart"
+
+# Shell into the test container
+make test-shell
+
+# Clean up Docker images and caches
+make clean
 ```
+
+Or run directly:
+
+```bash
+python -m slc_stock.app           # server
+python -m slc_stock.cli --help    # CLI
+pytest tests/ -v --ignore=tests/functional  # unit tests
+```
+
+### Functional Test Environment
+
+Functional tests run inside a Docker container built from `tests/functional/Dockerfile`. The container:
+- Installs all Python dependencies and Playwright with Chromium
+- Shadows `.env` with `/dev/null` so no real API keys are exposed
+- Runs as the host user (via `-u $(id -u):$(id -g)`) to avoid permission issues
+- A `conftest.py` safety check aborts if a real `.env` with credentials is detected
+
+The `PYTEST_ARGS` variable lets you pass any extra arguments to pytest (e.g., `-k`, `-s`, `--tb=long`).

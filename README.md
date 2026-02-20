@@ -16,19 +16,50 @@ pip install -r requirements.txt
 
 cp .env.example .env
 # Edit .env to add API keys if using Alpha Vantage or Polygon
-
-# Start the server (API + web UI)
-python -m slc_stock.app
-
-# Or pre-fetch history first
-python -m slc_stock.cli prefetch CSCO --years 3
 ```
 
 The SQLite database is created automatically at `instance/quotes.db` on first run.
 
+## Quick Start
+
+A `Makefile` provides the most common workflows. Run `make help` to see all targets.
+
+```bash
+# Start the server (API + web UI) on port 8080
+make serve
+
+# Run unit/integration tests locally (no Docker required)
+make unittest
+
+# Run the full functional test suite in Docker
+make test
+
+# Run functional tests without a TTY (for CI/agents)
+make test-notty
+
+# Target specific tests
+make test-notty PYTEST_ARGS="-k test_chart"
+
+# Open a shell in the test container for debugging
+make test-shell
+
+# Clean up Docker images and caches
+make clean
+```
+
+You can also start things manually:
+
+```bash
+# Start the server
+python -m slc_stock.app
+
+# Pre-fetch history via CLI
+python -m slc_stock.cli prefetch CSCO --years 3
+```
+
 ## Web Interface
 
-Open `http://localhost:5000/` in a browser. The web interface provides:
+Open `http://localhost:8080/` in a browser. The web interface provides:
 
 - **Dashboard** (`/`) — search bar with instant results, cached symbols table, system status sidebar (auto-refreshes)
 - **Symbol detail** (`/symbol/<SYMBOL>`) — price chart (Chart.js with 1M/3M/6M/1Y/3Y/All ranges), quote lookup by date, cache info panel, and a prefetch button
@@ -38,14 +69,14 @@ The UI uses htmx for dynamic updates (no full page reloads) and Chart.js for pri
 
 ## API Reference
 
-All JSON endpoints live under `/api/v1/`. The server runs on `http://localhost:5000` by default.
+All JSON endpoints live under `/api/v1/`. The server runs on `http://localhost:8080` by default.
 
 ### `GET /api/v1/stock/quote/<SYMBOL>`
 
 Returns the latest available quote. If the market is closed, falls back to the most recent trading day.
 
 ```bash
-curl http://localhost:5000/api/v1/stock/quote/CSCO
+curl http://localhost:8080/api/v1/stock/quote/CSCO
 ```
 
 ```json
@@ -69,7 +100,7 @@ curl http://localhost:5000/api/v1/stock/quote/CSCO
 Returns OHLCV for a specific day. If the market was closed that day (weekend, holiday), the response automatically falls back to the most recent prior trading day. The `requested_date` field shows what was originally asked for; `date` shows what was actually returned.
 
 ```bash
-curl http://localhost:5000/api/v1/stock/quote/CSCO/2026-02-16
+curl http://localhost:8080/api/v1/stock/quote/CSCO/2026-02-16
 ```
 
 ```json
@@ -85,7 +116,7 @@ curl http://localhost:5000/api/v1/stock/quote/CSCO/2026-02-16
 Add `?provider=all` to compare across all cached providers:
 
 ```bash
-curl http://localhost:5000/api/v1/stock/quote/CSCO/2025-10-10?provider=all
+curl http://localhost:8080/api/v1/stock/quote/CSCO/2025-10-10?provider=all
 ```
 
 ### `GET /api/v1/stock/history/<SYMBOL>?years=3`
@@ -93,7 +124,7 @@ curl http://localhost:5000/api/v1/stock/quote/CSCO/2025-10-10?provider=all
 Returns stored daily history from the database. Optional query params: `years` (default 3), `provider`.
 
 ```bash
-curl http://localhost:5000/api/v1/stock/history/CSCO?years=1
+curl http://localhost:8080/api/v1/stock/history/CSCO?years=1
 ```
 
 ### `POST /api/v1/stock/prefetch/<SYMBOL>`
@@ -101,7 +132,7 @@ curl http://localhost:5000/api/v1/stock/history/CSCO?years=1
 Triggers a background prefetch of historical data. Returns immediately.
 
 ```bash
-curl -X POST http://localhost:5000/api/v1/stock/prefetch/CSCO
+curl -X POST http://localhost:8080/api/v1/stock/prefetch/CSCO
 ```
 
 ```json
@@ -115,7 +146,7 @@ If already in progress: `{"status": "already_in_progress", "symbol": "CSCO"}`
 Cache inventory -- shows all symbols in the database, quote counts, date ranges, provider configuration, and any background prefetch threads in flight. Useful for debugging.
 
 ```bash
-curl http://localhost:5000/api/v1/stock/info
+curl http://localhost:8080/api/v1/stock/info
 ```
 
 ```json
@@ -137,13 +168,13 @@ curl http://localhost:5000/api/v1/stock/info
 Per-symbol detail with provider-by-provider breakdown.
 
 ```bash
-curl http://localhost:5000/api/v1/stock/info/CSCO
+curl http://localhost:8080/api/v1/stock/info/CSCO
 ```
 
 ### `GET /api/v1/health`
 
 ```bash
-curl http://localhost:5000/api/v1/health
+curl http://localhost:8080/api/v1/health
 ```
 
 ## CLI Reference
@@ -230,10 +261,41 @@ All settings are loaded from environment variables (`.env` file supported via py
 - **API versioning**: All JSON endpoints are namespaced under `/api/v1/` via a Flask Blueprint. The web UI lives on root paths (`/`, `/symbol/<sym>`, `/compare`).
 - **Web UI**: Server-rendered Jinja2 templates with htmx for partial page updates and Chart.js for interactive price charts. No build step required.
 
-## Running Tests
+## Testing
+
+The project has two layers of tests, managed via the Makefile:
+
+### Unit / Integration Tests
+
+Fast, local tests using a mock provider and in-memory SQLite. They never hit real APIs or require Docker.
 
 ```bash
-python -m pytest tests/ -v
+make unittest
 ```
 
-Tests use a mock provider and in-memory SQLite -- they never hit real APIs.
+### Functional Tests (Dockerized)
+
+End-to-end tests that exercise the API and web UI using Playwright (browser automation) inside a Docker container. The container shadows the `.env` file so no real API keys are exposed.
+
+```bash
+# Interactive (TTY, coloured output)
+make test
+
+# Non-interactive (CI/agents)
+make test-notty
+
+# Target specific tests
+make test-notty PYTEST_ARGS="-k test_date_picker"
+
+# Debug inside the container
+make test-shell
+```
+
+**Requirements:** Docker must be installed and running. No other local dependencies are needed beyond what `pip install -r requirements.txt` provides.
+
+The functional test suite covers:
+- All `/api/v1/` JSON endpoints (16 tests)
+- Dashboard page: search, cached symbols table, status panel (12 tests)
+- Symbol detail page: chart rendering, range buttons, date picker, prefetch, cache info (17 tests)
+- Compare page: form, results table, error handling (7 tests)
+- Cross-page navigation (5 tests)
