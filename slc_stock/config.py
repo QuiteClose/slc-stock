@@ -16,3 +16,5 @@ DEFAULT_PROVIDER = os.getenv("DEFAULT_PROVIDER", "yfinance")
 
 ALPHA_VANTAGE_API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY", "")
 POLYGON_API_KEY = os.getenv("POLYGON_API_KEY", "")
+
+PREFETCH_YEARS = int(os.getenv("PREFETCH_YEARS", "3"))

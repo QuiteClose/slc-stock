@@ -3,6 +3,14 @@ from datetime import date
 from typing import Optional
 
 
+class SymbolNotFoundError(Exception):
+    """Raised when a ticker symbol does not exist."""
+
+    def __init__(self, symbol: str):
+        self.symbol = symbol
+        super().__init__(f"Symbol not found: {symbol}")
+
+
 class QuoteData:
     """Normalized quote returned by every provider."""
 
@@ -15,6 +23,7 @@ class QuoteData:
         low: Optional[float],
         close: Optional[float],
         volume: Optional[float],
+        adjusted: bool = True,
     ):
         self.symbol = symbol.upper()
         self.date = date
@@ -23,6 +32,7 @@ class QuoteData:
         self.low = low
         self.close = close
         self.volume = volume
+        self.adjusted = adjusted
 
 
 class StockProvider(ABC):
@@ -39,6 +49,10 @@ class StockProvider(ABC):
         self, symbol: str, start: date, end: date
     ) -> list[QuoteData]:
         """Fetch daily OHLCV for a date range."""
+
+    @abstractmethod
+    def validate_symbol(self, symbol: str) -> bool:
+        """Return True if the symbol is a valid, tradeable ticker."""
 
     def is_configured(self) -> bool:
         """Return True if this provider has all required credentials."""

@@ -1,6 +1,7 @@
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 
 from sqlalchemy import (
+    Boolean,
     Column,
     Date,
     DateTime,
@@ -28,8 +29,9 @@ class Quote(Base):
     low = Column(Float)
     close = Column(Float)
     volume = Column(Float)
+    adjusted = Column(Boolean, nullable=False, default=True)
     provider = Column(String, nullable=False)
-    fetched_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    fetched_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
 
     def to_dict(self):
         return {
@@ -40,6 +42,7 @@ class Quote(Base):
             "low": self.low,
             "close": self.close,
             "volume": self.volume,
+            "adjusted": self.adjusted,
             "provider": self.provider,
             "fetched_at": self.fetched_at.isoformat(),
         }
