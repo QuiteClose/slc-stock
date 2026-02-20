@@ -2,7 +2,7 @@
 {% block title %}{{ symbol }} — slc-stock{% endblock %}
 {% block head %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"
-        integrity="sha384-hlFGeqDAVJxhKPkME+Jci/BEClAhMsrXhGfUJltNz5NjQqxmFHmb/DKuqaFDIHV"
+        integrity="sha384-T/4KgSWuZEPozpPz7rnnp/5lDSnpY1VPJCojf1S81uTHS1E38qgLfMgVsAeRCWc4"
         crossorigin="anonymous"></script>
 {% endblock %}
 
@@ -26,18 +26,18 @@
   <section class="chart-section">
     <h2>Price History</h2>
     <div class="range-buttons">
-      <button onclick="loadChart('{{ symbol }}', 0.08)" class="btn-sm">1M</button>
-      <button onclick="loadChart('{{ symbol }}', 0.25)" class="btn-sm">3M</button>
-      <button onclick="loadChart('{{ symbol }}', 0.5)" class="btn-sm">6M</button>
-      <button onclick="loadChart('{{ symbol }}', 1)" class="btn-sm">1Y</button>
-      <button onclick="loadChart('{{ symbol }}', 3)" class="btn-sm active">3Y</button>
-      <button onclick="loadChart('{{ symbol }}', 10)" class="btn-sm">All</button>
+      <button onclick="loadChart(this, '{{ symbol }}', 30)" class="btn-sm">1M</button>
+      <button onclick="loadChart(this, '{{ symbol }}', 90)" class="btn-sm">3M</button>
+      <button onclick="loadChart(this, '{{ symbol }}', 180)" class="btn-sm">6M</button>
+      <button onclick="loadChart(this, '{{ symbol }}', 365)" class="btn-sm">1Y</button>
+      <button onclick="loadChart(this, '{{ symbol }}', 1095)" class="btn-sm active">3Y</button>
+      <button onclick="loadChart(this, '{{ symbol }}', 3650)" class="btn-sm">All</button>
     </div>
     <div class="chart-container">
       <canvas id="priceChart"></canvas>
     </div>
     <div id="chart-data-holder"
-         hx-get="/ui/chart-data/{{ symbol }}?years=3"
+         hx-get="/ui/chart-data/{{ symbol }}?days=1095"
          hx-trigger="load"
          hx-swap="innerHTML"></div>
   </section>
@@ -46,12 +46,8 @@
     <h2>Quote Lookup</h2>
     <form onsubmit="return false;" class="lookup-form">
       <input type="date" id="lookup-date"
-             hx-get="/ui/quote/{{ symbol }}/{value}"
-             hx-trigger="change"
              hx-target="#quote-result"
-             hx-include="[id='lookup-date']"
-             hx-vals='js:{}'
-             onchange="this.setAttribute('hx-get', '/ui/quote/{{ symbol }}/' + this.value); htmx.trigger(this, 'change')">
+             onchange="lookupQuote(this.value)">
       <div id="quote-result"></div>
     </form>
   </section>
@@ -88,7 +84,7 @@
     <section class="prefetch-section">
       <h2>Prefetch</h2>
       <button class="btn"
-              hx-post="/api/v1/stock/prefetch/{{ symbol }}"
+              hx-post="/ui/prefetch/{{ symbol }}"
               hx-swap="innerHTML"
               hx-target="#prefetch-status">
         Fetch 3yr History
@@ -101,14 +97,23 @@
 <script>
 let chartInstance = null;
 
-function loadChart(symbol, years) {
+function loadChart(btn, symbol, days) {
   document.querySelectorAll('.range-buttons .btn-sm').forEach(b => b.classList.remove('active'));
-  event.target.classList.add('active');
-  htmx.ajax('GET', '/ui/chart-data/' + symbol + '?years=' + years, {target: '#chart-data-holder', swap: 'innerHTML'});
+  btn.classList.add('active');
+  htmx.ajax('GET', '/ui/chart-data/' + symbol + '?days=' + days, {target: '#chart-data-holder', swap: 'innerHTML'});
 }
 
-function renderChart(labels, data) {
-  const ctx = document.getElementById('priceChart');
+function lookupQuote(dateStr) {
+  if (!dateStr) return;
+  htmx.ajax('GET', '/ui/quote/{{ symbol }}/' + encodeURIComponent(dateStr), {target: '#quote-result', swap: 'innerHTML'});
+}
+
+function tryRenderChart() {
+  var el = document.getElementById('chart-payload');
+  if (!el) return;
+  var labels = JSON.parse(el.dataset.labels);
+  var data = JSON.parse(el.dataset.values);
+  var ctx = document.getElementById('priceChart');
   if (!ctx) return;
   if (chartInstance) chartInstance.destroy();
   chartInstance = new Chart(ctx, {
@@ -138,5 +143,11 @@ function renderChart(labels, data) {
     }
   });
 }
+
+document.body.addEventListener('htmx:afterSwap', function(evt) {
+  if (evt.detail.target.id === 'chart-data-holder') {
+    tryRenderChart();
+  }
+});
 </script>
 {% endblock %}

@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 
 from flask import Blueprint, render_template, request
 
@@ -79,11 +79,31 @@ def ui_cache_status():
 def ui_chart_data(symbol: str):
     svc = _get_svc()
     symbol = symbol.upper()
-    years = request.args.get("years", 3, type=int)
+    days = request.args.get("days", 1095, type=int)
     end = date.today()
-    start = date(end.year - years, end.month, end.day)
+    start = end - timedelta(days=days)
     quotes = svc.get_history(symbol, start, end)
     return render_template("partials/chart_data.html", symbol=symbol, quotes=quotes)
+
+
+@web.route("/ui/prefetch/<symbol>", methods=["POST"])
+def ui_prefetch(symbol: str):
+    svc = _get_svc()
+    symbol = symbol.upper()
+    from slc_stock.config import DEFAULT_PROVIDER as _dp
+    provider_name = request.args.get("provider") or _dp
+
+    try:
+        svc._validate_symbol(symbol, provider_name)
+    except SymbolNotFoundError as exc:
+        return f'<p class="error">{exc}</p>'
+
+    key = (symbol, provider_name)
+    if key in svc._prefetch_in_flight:
+        return '<p class="info">Prefetch already in progress.</p>'
+
+    svc._maybe_background_prefetch(symbol, provider_name)
+    return '<p class="success">Prefetch started.</p>'
 
 
 @web.route("/ui/compare")

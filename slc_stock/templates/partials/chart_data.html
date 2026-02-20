@@ -1,13 +1,7 @@
 {% if quotes %}
-<script>
-(function() {
-  var labels = {{ quotes | map(attribute='date') | list | tojson }};
-  var data = {{ quotes | map(attribute='close') | list | tojson }};
-  if (typeof renderChart === 'function') {
-    renderChart(labels, data);
-  }
-})();
-</script>
+<div id="chart-payload"
+     data-labels='{{ quotes | map(attribute="date") | list | tojson }}'
+     data-values='{{ quotes | map(attribute="close") | list | tojson }}'></div>
 {% else %}
 <p class="muted">No history data available for {{ symbol }}.</p>
 {% endif %}
