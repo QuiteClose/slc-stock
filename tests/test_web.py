@@ -106,6 +106,35 @@ class TestApiLinks:
         assert b'data-url="/api/v1/stock/quote/CSCO/2026-02-13?provider=all"' in resp.data
 
 
+class TestCandlestickChart:
+    """Chart data partial should include OHLC attributes and symbol page should have chart type toggle."""
+
+    def test_chart_data_has_ohlc_attributes(self, client):
+        client.get("/api/v1/stock/quote/CSCO/2026-02-13")
+        resp = client.get("/ui/chart-data/CSCO?days=365")
+        assert b"data-open" in resp.data
+        assert b"data-high" in resp.data
+        assert b"data-low" in resp.data
+        assert b"data-values" in resp.data
+
+    def test_chart_data_ohlc_values(self, client):
+        client.get("/api/v1/stock/quote/CSCO/2026-02-13")
+        resp = client.get("/ui/chart-data/CSCO?days=365")
+        assert b"100.0" in resp.data
+        assert b"105.0" in resp.data
+        assert b"99.0" in resp.data
+
+    def test_symbol_page_has_chart_type_toggle(self, client):
+        resp = client.get("/symbol/CSCO")
+        assert b'data-chart-type="line"' in resp.data
+        assert b'data-chart-type="candlestick"' in resp.data
+
+    def test_symbol_page_line_button_active_by_default(self, client):
+        resp = client.get("/symbol/CSCO")
+        html = resp.data.decode()
+        assert 'chart-type-btn active" data-chart-type="line"' in html
+
+
 class TestHtmlEscaping:
     """Issue 2: error messages must not contain raw HTML."""
 

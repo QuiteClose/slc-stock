@@ -1,7 +1,10 @@
 {% if quotes %}
 <div id="chart-payload"
      data-labels='{{ quotes | map(attribute="date") | list | tojson }}'
-     data-values='{{ quotes | map(attribute="close") | list | tojson }}'></div>
+     data-values='{{ quotes | map(attribute="close") | list | tojson }}'
+     data-open='{{ quotes | map(attribute="open") | list | tojson }}'
+     data-high='{{ quotes | map(attribute="high") | list | tojson }}'
+     data-low='{{ quotes | map(attribute="low") | list | tojson }}'></div>
 {% else %}
 <p class="muted">No history data available for {{ symbol }}.</p>
 {% endif %}

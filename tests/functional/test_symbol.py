@@ -164,6 +164,68 @@ def test_cache_info_shows_date_range(page: Page, seeded_server):
     expect(info).to_contain_text("→")
 
 
+def test_chart_type_toggle_present(page: Page, seeded_server):
+    """Symbol page should have Line and Candle chart type buttons."""
+    page.goto(seeded_server.url("/symbol/CSCO"))
+    line_btn = page.locator('.chart-type-btn[data-chart-type="line"]')
+    candle_btn = page.locator('.chart-type-btn[data-chart-type="candlestick"]')
+    expect(line_btn).to_be_visible()
+    expect(candle_btn).to_be_visible()
+
+
+def test_chart_type_line_active_by_default(page: Page, seeded_server):
+    """Line button should be active by default."""
+    page.goto(seeded_server.url("/symbol/CSCO"))
+    line_btn = page.locator('.chart-type-btn[data-chart-type="line"]')
+    expect(line_btn).to_have_class(re.compile("active"))
+
+
+def test_chart_type_toggle_to_candlestick(page: Page, seeded_server):
+    """Clicking Candle should activate the candlestick button and deactivate Line."""
+    page.goto(seeded_server.url("/symbol/CSCO"))
+    page.wait_for_selector("#chart-data-holder #chart-payload", state="attached", timeout=10000)
+    candle_btn = page.locator('.chart-type-btn[data-chart-type="candlestick"]')
+    line_btn = page.locator('.chart-type-btn[data-chart-type="line"]')
+    candle_btn.click()
+    expect(candle_btn).to_have_class(re.compile("active"), timeout=5000)
+    expect(line_btn).not_to_have_class(re.compile("active"))
+
+
+def test_chart_type_toggle_back_to_line(page: Page, seeded_server):
+    """Clicking Line after Candle should restore the line chart."""
+    page.goto(seeded_server.url("/symbol/CSCO"))
+    page.wait_for_selector("#chart-data-holder #chart-payload", state="attached", timeout=10000)
+    candle_btn = page.locator('.chart-type-btn[data-chart-type="candlestick"]')
+    line_btn = page.locator('.chart-type-btn[data-chart-type="line"]')
+    candle_btn.click()
+    expect(candle_btn).to_have_class(re.compile("active"), timeout=5000)
+    line_btn.click()
+    expect(line_btn).to_have_class(re.compile("active"), timeout=5000)
+    expect(candle_btn).not_to_have_class(re.compile("active"))
+
+
+def test_chart_payload_has_ohlc_data(page: Page, seeded_server):
+    """Chart data payload should contain OHLC data attributes."""
+    page.goto(seeded_server.url("/symbol/CSCO"))
+    page.wait_for_selector("#chart-data-holder #chart-payload", state="attached", timeout=10000)
+    payload = page.locator("#chart-payload")
+    assert payload.get_attribute("data-open") is not None
+    assert payload.get_attribute("data-high") is not None
+    assert payload.get_attribute("data-low") is not None
+    assert payload.get_attribute("data-values") is not None
+
+
+def test_candlestick_chart_renders(page: Page, seeded_server):
+    """Switching to candlestick should re-render the chart without errors."""
+    page.goto(seeded_server.url("/symbol/CSCO"))
+    page.wait_for_function("typeof chartInstance !== 'undefined' && chartInstance !== null", timeout=10000)
+    candle_btn = page.locator('.chart-type-btn[data-chart-type="candlestick"]')
+    candle_btn.click()
+    page.wait_for_function("chartInstance !== null && chartInstance.config.type === 'candlestick'", timeout=10000)
+    chart_type = page.evaluate("chartInstance.config.type")
+    assert chart_type == "candlestick"
+
+
 def test_api_link_present_in_header(page: Page, seeded_server):
     """Symbol header should have an API link badge."""
     page.goto(seeded_server.url("/symbol/CSCO"))
