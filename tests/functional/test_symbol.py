@@ -57,20 +57,19 @@ def test_range_button_3y_is_active_by_default(page: Page, seeded_server):
 
 def test_range_button_1y_sets_active(page: Page, seeded_server):
     page.goto(seeded_server.url("/symbol/CSCO"))
-    page.wait_for_timeout(1000)
+    page.wait_for_selector("#chart-data-holder #chart-payload", state="attached", timeout=10000)
     btn_1y = page.locator(".range-buttons .btn-sm", has_text="1Y")
     btn_1y.click()
-    page.wait_for_timeout(1000)
-    expect(btn_1y).to_have_class(re.compile("active"))
+    expect(btn_1y).to_have_class(re.compile("active"), timeout=5000)
 
 
 def test_range_button_1m_requests_valid_data(page: Page, seeded_server):
     """1M button should show data (not "No history data available")."""
     page.goto(seeded_server.url("/symbol/CSCO"))
-    page.wait_for_timeout(1000)
+    page.wait_for_selector("#chart-data-holder #chart-payload", state="attached", timeout=10000)
     btn_1m = page.locator(".range-buttons .btn-sm", has_text="1M")
     btn_1m.click()
-    page.wait_for_timeout(2000)
+    page.wait_for_selector("#chart-data-holder #chart-payload", state="attached", timeout=10000)
     holder = page.locator("#chart-data-holder")
     expect(holder).not_to_contain_text("No history data available")
 
@@ -78,10 +77,10 @@ def test_range_button_1m_requests_valid_data(page: Page, seeded_server):
 def test_range_button_3m_requests_valid_data(page: Page, seeded_server):
     """3M button should show data."""
     page.goto(seeded_server.url("/symbol/CSCO"))
-    page.wait_for_timeout(1000)
+    page.wait_for_selector("#chart-data-holder #chart-payload", state="attached", timeout=10000)
     btn_3m = page.locator(".range-buttons .btn-sm", has_text="3M")
     btn_3m.click()
-    page.wait_for_timeout(2000)
+    page.wait_for_selector("#chart-data-holder #chart-payload", state="attached", timeout=10000)
     holder = page.locator("#chart-data-holder")
     expect(holder).not_to_contain_text("No history data available")
 
@@ -89,10 +88,10 @@ def test_range_button_3m_requests_valid_data(page: Page, seeded_server):
 def test_range_button_6m_requests_valid_data(page: Page, seeded_server):
     """6M button should show data."""
     page.goto(seeded_server.url("/symbol/CSCO"))
-    page.wait_for_timeout(1000)
+    page.wait_for_selector("#chart-data-holder #chart-payload", state="attached", timeout=10000)
     btn_6m = page.locator(".range-buttons .btn-sm", has_text="6M")
     btn_6m.click()
-    page.wait_for_timeout(2000)
+    page.wait_for_selector("#chart-data-holder #chart-payload", state="attached", timeout=10000)
     holder = page.locator("#chart-data-holder")
     expect(holder).not_to_contain_text("No history data available")
 
@@ -108,7 +107,7 @@ def test_date_picker_returns_quote(page: Page, seeded_server):
     page.goto(seeded_server.url("/symbol/CSCO"))
     page.fill("#lookup-date", "2026-02-13")
     page.locator("#lookup-date").dispatch_event("change")
-    page.wait_for_timeout(2000)
+    page.wait_for_selector("#quote-result :first-child", state="attached", timeout=10000)
     result = page.locator("#quote-result")
     expect(result).not_to_be_empty()
     expect(result).to_contain_text("Close")
@@ -118,7 +117,7 @@ def test_date_picker_shows_ohlcv_values(page: Page, seeded_server):
     page.goto(seeded_server.url("/symbol/CSCO"))
     page.fill("#lookup-date", "2026-02-13")
     page.locator("#lookup-date").dispatch_event("change")
-    page.wait_for_timeout(2000)
+    page.wait_for_selector("#quote-result :first-child", state="attached", timeout=10000)
     result = page.locator("#quote-result")
     expect(result).to_contain_text("Close")
     expect(result).to_contain_text("Open")
@@ -137,9 +136,9 @@ def test_prefetch_button_present(page: Page, seeded_server):
 def test_prefetch_button_shows_feedback(page: Page, seeded_server):
     """Prefetch button should show readable feedback, not raw JSON."""
     page.goto(seeded_server.url("/symbol/CSCO"))
-    page.wait_for_timeout(1000)
+    page.wait_for_selector("#chart-data-holder #chart-payload", state="attached", timeout=10000)
     page.locator(".prefetch-section .btn").click()
-    page.wait_for_timeout(2000)
+    page.wait_for_selector("#prefetch-status :first-child", state="attached", timeout=10000)
     status = page.locator("#prefetch-status")
     expect(status).not_to_be_empty()
     expect(status).not_to_contain_text("{")

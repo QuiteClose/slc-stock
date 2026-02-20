@@ -1,11 +1,23 @@
+import logging
 from datetime import date, timedelta
+from html import escape as html_escape
 
 from flask import Blueprint, render_template, request
 
 from slc_stock.app import _get_svc
 from slc_stock.providers import SymbolNotFoundError
+from slc_stock.validation import is_valid_symbol_format
+
+log = logging.getLogger(__name__)
 
 web = Blueprint("web", __name__)
+
+_MAX_CHART_DAYS = 3650
+_MIN_CHART_DAYS = 1
+
+
+def _bad_symbol_html():
+    return '<p class="error">Invalid symbol format.</p>', 400
 
 
 @web.route("/")
@@ -17,6 +29,8 @@ def dashboard():
 
 @web.route("/symbol/<symbol>")
 def symbol_detail(symbol: str):
+    if not is_valid_symbol_format(symbol):
+        return _bad_symbol_html()
     svc = _get_svc()
     symbol = symbol.upper()
     info = svc.get_symbol_info(symbol)
@@ -26,7 +40,7 @@ def symbol_detail(symbol: str):
     except SymbolNotFoundError:
         pass
     except Exception:
-        pass
+        log.exception("Failed to fetch latest quote for %s", symbol)
     return render_template("symbol.html", symbol=symbol, info=info, latest=latest)
 
 
@@ -50,6 +64,8 @@ def ui_search():
 
 @web.route("/ui/quote/<symbol>/<date_str>")
 def ui_quote(symbol: str, date_str: str):
+    if not is_valid_symbol_format(symbol):
+        return _bad_symbol_html()
     svc = _get_svc()
     symbol = symbol.upper()
     try:
@@ -60,10 +76,10 @@ def ui_quote(symbol: str, date_str: str):
     try:
         result = svc.get_quote(symbol, day)
     except SymbolNotFoundError:
-        return f'<p class="error">Symbol {symbol} not found.</p>'
+        return f'<p class="error">Symbol {html_escape(symbol)} not found.</p>'
 
     if result is None:
-        return f'<p class="muted">No data for {symbol} near {date_str}.</p>'
+        return f'<p class="muted">No data for {html_escape(symbol)} near {html_escape(date_str)}.</p>'
 
     return render_template("partials/quote_result.html", q=result)
 
@@ -77,9 +93,13 @@ def ui_cache_status():
 
 @web.route("/ui/chart-data/<symbol>")
 def ui_chart_data(symbol: str):
+    if not is_valid_symbol_format(symbol):
+        return _bad_symbol_html()
     svc = _get_svc()
     symbol = symbol.upper()
     days = request.args.get("days", 1095, type=int)
+    if not _MIN_CHART_DAYS <= days <= _MAX_CHART_DAYS:
+        return '<p class="error">days must be between 1 and 3650.</p>', 400
     end = date.today()
     start = end - timedelta(days=days)
     quotes = svc.get_history(symbol, start, end)
@@ -88,6 +108,8 @@ def ui_chart_data(symbol: str):
 
 @web.route("/ui/prefetch/<symbol>", methods=["POST"])
 def ui_prefetch(symbol: str):
+    if not is_valid_symbol_format(symbol):
+        return _bad_symbol_html()
     svc = _get_svc()
     symbol = symbol.upper()
     from slc_stock.config import DEFAULT_PROVIDER as _dp
@@ -96,7 +118,7 @@ def ui_prefetch(symbol: str):
     try:
         svc._validate_symbol(symbol, provider_name)
     except SymbolNotFoundError as exc:
-        return f'<p class="error">{exc}</p>'
+        return f'<p class="error">{html_escape(str(exc))}</p>'
 
     key = (symbol, provider_name)
     if key in svc._prefetch_in_flight:

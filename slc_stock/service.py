@@ -442,26 +442,32 @@ class QuoteService:
     def load_database(self, records: list[dict]) -> int:
         session = get_session()
         loaded = 0
+        skipped = 0
         try:
-            for rec in records:
-                qd = QuoteData(
-                    symbol=rec["symbol"],
-                    date=date.fromisoformat(rec["date"]),
-                    open=rec.get("open"),
-                    high=rec.get("high"),
-                    low=rec.get("low"),
-                    close=rec.get("close"),
-                    volume=rec.get("volume"),
-                    adjusted=rec.get("adjusted", True),
-                )
+            for i, rec in enumerate(records):
                 try:
+                    qd = QuoteData(
+                        symbol=rec["symbol"],
+                        date=date.fromisoformat(rec["date"]),
+                        open=rec.get("open"),
+                        high=rec.get("high"),
+                        low=rec.get("low"),
+                        close=rec.get("close"),
+                        volume=rec.get("volume"),
+                        adjusted=rec.get("adjusted", True),
+                    )
                     _store_quote(session, qd, rec["provider"])
                     session.flush()
                     loaded += 1
+                except (KeyError, ValueError, TypeError) as exc:
+                    log.warning("Skipping malformed record %d: %s", i, exc)
+                    skipped += 1
                 except IntegrityError:
                     session.rollback()
             session.commit()
         finally:
             session.close()
+        if skipped:
+            log.warning("Database load: %d records skipped due to errors", skipped)
         log.info("Database load complete: %d records imported", loaded)
         return loaded

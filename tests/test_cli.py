@@ -36,3 +36,13 @@ class TestProvidersCommand:
         result = runner.invoke(cli, ["providers"])
         assert result.exit_code == 0
         assert "mock" in result.output
+
+
+class TestCompareCommand:
+    def test_compare_invalid_date(self):
+        """Issue 9: invalid date should show error, not a traceback."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["compare", "CSCO", "not-a-date"])
+        assert result.exit_code != 0
+        assert "invalid date" in result.output.lower()
+        assert "Traceback" not in result.output

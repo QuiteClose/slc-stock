@@ -123,3 +123,22 @@ class TestDumpLoad:
         svc2 = QuoteService()
         loaded = svc2.load_database(records)
         assert loaded == len(records)
+
+    def test_load_malformed_record_skipped(self, service):
+        """Issue 7: malformed records should be skipped, not raise KeyError."""
+        records = [
+            {"bad": "data"},
+            {
+                "symbol": "CSCO", "date": "2026-02-13", "provider": "mock",
+                "open": 100.0, "high": 105.0, "low": 99.0, "close": 103.0,
+                "volume": 1000000.0, "adjusted": True,
+            },
+        ]
+        loaded = service.load_database(records)
+        assert loaded == 1
+
+    def test_load_missing_date_skipped(self, service):
+        """Record missing required 'date' key should be skipped."""
+        records = [{"symbol": "CSCO", "provider": "mock"}]
+        loaded = service.load_database(records)
+        assert loaded == 0

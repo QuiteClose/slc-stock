@@ -43,6 +43,38 @@ class TestQuoteEndpoint:
         assert "quotes" in data
 
 
+class TestSymbolFormatValidation:
+    """Issue 1: symbols with special characters must be rejected (XSS prevention)."""
+
+    def test_quote_xss_in_symbol(self, client):
+        resp = client.get("/api/v1/stock/quote/CSCO%27%29%3Balert(1)/2026-02-13")
+        assert resp.status_code == 400
+        assert "invalid symbol" in resp.get_json()["error"].lower()
+
+    def test_quote_latest_xss_symbol(self, client):
+        resp = client.get("/api/v1/stock/quote/<script>")
+        assert resp.status_code == 400
+
+    def test_history_xss_symbol(self, client):
+        resp = client.get("/api/v1/stock/history/<script>?years=1")
+        assert resp.status_code == 400
+
+    def test_info_xss_symbol(self, client):
+        resp = client.get("/api/v1/stock/info/<script>")
+        assert resp.status_code == 400
+
+    def test_prefetch_xss_symbol(self, client):
+        resp = client.post("/api/v1/stock/prefetch/<script>")
+        assert resp.status_code == 400
+
+    def test_valid_dotted_symbol(self, client):
+        """BRK.B style symbols should be accepted."""
+        resp = client.get("/api/v1/stock/quote/BRK.B/2026-02-13")
+        assert resp.status_code in (200, 400)
+        if resp.status_code == 400:
+            assert "invalid symbol format" not in resp.get_json()["error"].lower()
+
+
 class TestInfoEndpoint:
     def test_info_inventory_empty(self, client):
         resp = client.get("/api/v1/stock/info")
@@ -70,6 +102,19 @@ class TestHistoryEndpoint:
         data = resp.get_json()
         assert data["symbol"] == "CSCO"
         assert "quotes" in data
+
+    def test_history_years_too_large(self, client):
+        """Issue 4: years=9999 should return 400, not crash with 500."""
+        resp = client.get("/api/v1/stock/history/CSCO?years=9999")
+        assert resp.status_code == 400
+
+    def test_history_years_negative(self, client):
+        resp = client.get("/api/v1/stock/history/CSCO?years=-1")
+        assert resp.status_code == 400
+
+    def test_history_years_zero(self, client):
+        resp = client.get("/api/v1/stock/history/CSCO?years=0")
+        assert resp.status_code == 400
 
 
 class TestPrefetchEndpoint:

@@ -9,6 +9,7 @@ import slc_stock.providers.polygon_provider  # noqa: F401
 from slc_stock.logging_config import setup_logging
 from slc_stock.providers import SymbolNotFoundError
 from slc_stock.service import QuoteService
+from slc_stock.validation import is_valid_symbol_format
 
 api = Blueprint("api", __name__)
 
@@ -27,8 +28,18 @@ def health():
     return jsonify({"status": "ok"})
 
 
+def _check_symbol(symbol: str):
+    """Return a 400 JSON response if the symbol format is invalid, else None."""
+    if not is_valid_symbol_format(symbol):
+        return jsonify({"error": "Invalid symbol format."}), 400
+    return None
+
+
 @api.route("/stock/quote/<symbol>")
 def stock_quote_latest(symbol: str):
+    bad = _check_symbol(symbol)
+    if bad:
+        return bad
     svc = _get_svc()
     provider_arg = request.args.get("provider")
     try:
@@ -42,6 +53,9 @@ def stock_quote_latest(symbol: str):
 
 @api.route("/stock/quote/<symbol>/<date_str>")
 def stock_quote(symbol: str, date_str: str):
+    bad = _check_symbol(symbol)
+    if bad:
+        return bad
     svc = _get_svc()
     try:
         day = date.fromisoformat(date_str)
@@ -66,8 +80,13 @@ def stock_quote(symbol: str, date_str: str):
 
 @api.route("/stock/history/<symbol>")
 def stock_history(symbol: str):
+    bad = _check_symbol(symbol)
+    if bad:
+        return bad
     svc = _get_svc()
     years = request.args.get("years", 3, type=int)
+    if not 1 <= years <= 30:
+        return jsonify({"error": "years must be between 1 and 30."}), 400
     provider_arg = request.args.get("provider")
     end = date.today()
     start = date(end.year - years, end.month, end.day)
@@ -89,6 +108,9 @@ def stock_info_all():
 
 @api.route("/stock/info/<symbol>")
 def stock_info(symbol: str):
+    bad = _check_symbol(symbol)
+    if bad:
+        return bad
     result = _get_svc().get_symbol_info(symbol)
     if result is None:
         return jsonify({"error": f"No data cached for {symbol.upper()}"}), 404
@@ -97,6 +119,9 @@ def stock_info(symbol: str):
 
 @api.route("/stock/prefetch/<symbol>", methods=["POST"])
 def stock_prefetch(symbol: str):
+    bad = _check_symbol(symbol)
+    if bad:
+        return bad
     from slc_stock.config import DEFAULT_PROVIDER as _dp
     svc = _get_svc()
     symbol = symbol.upper()

@@ -65,7 +65,11 @@ def providers():
 def compare(symbol: str, date_str: str):
     """Show data from all providers for a given symbol and date."""
     svc = QuoteService()
-    day = date.fromisoformat(date_str)
+    try:
+        day = date.fromisoformat(date_str)
+    except ValueError:
+        click.echo(f"Invalid date format: {date_str}. Use YYYY-MM-DD.", err=True)
+        raise SystemExit(1)
     results = svc.get_quote_all_providers(symbol, day)
 
     if not results:
