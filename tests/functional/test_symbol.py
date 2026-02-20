@@ -162,3 +162,49 @@ def test_cache_info_shows_date_range(page: Page, seeded_server):
     info = page.locator(".cache-info")
     expect(info).to_contain_text("Date Range")
     expect(info).to_contain_text("→")
+
+
+def test_api_link_present_in_header(page: Page, seeded_server):
+    """Symbol header should have an API link badge."""
+    page.goto(seeded_server.url("/symbol/CSCO"))
+    link = page.locator(".symbol-header .api-link")
+    expect(link).to_be_visible()
+    assert link.get_attribute("data-url") == "/api/v1/stock/quote/CSCO"
+
+
+def test_api_link_present_for_chart(page: Page, seeded_server):
+    """Chart section should have an API link badge with history URL."""
+    page.goto(seeded_server.url("/symbol/CSCO"))
+    link = page.locator("#chart-api-link")
+    expect(link).to_be_visible()
+    assert link.get_attribute("data-url") == "/api/v1/stock/history/CSCO?years=3"
+
+
+def test_chart_api_link_updates_on_range_change(page: Page, seeded_server):
+    """Clicking 1M range button should update the chart API link."""
+    page.goto(seeded_server.url("/symbol/CSCO"))
+    page.wait_for_selector("#chart-data-holder #chart-payload", state="attached", timeout=10000)
+    btn_1m = page.locator(".range-buttons .btn-sm", has_text="1M")
+    btn_1m.click()
+    expect(btn_1m).to_have_class(re.compile("active"), timeout=5000)
+    link = page.locator("#chart-api-link")
+    assert link.get_attribute("data-url") == "/api/v1/stock/history/CSCO?years=1"
+
+
+def test_api_link_present_for_cache_info(page: Page, seeded_server):
+    """Cache info section should have an API link badge."""
+    page.goto(seeded_server.url("/symbol/CSCO"))
+    link = page.locator(".cache-info .api-link")
+    expect(link).to_be_visible()
+    assert link.get_attribute("data-url") == "/api/v1/stock/info/CSCO"
+
+
+def test_quote_result_has_api_link(page: Page, seeded_server):
+    """Looking up a quote should show an API link in the result."""
+    page.goto(seeded_server.url("/symbol/CSCO"))
+    page.fill("#lookup-date", "2026-02-13")
+    page.locator("#lookup-date").dispatch_event("change")
+    page.wait_for_selector("#quote-result .api-link", state="attached", timeout=10000)
+    link = page.locator("#quote-result .api-link")
+    expect(link).to_be_visible()
+    assert link.get_attribute("data-url") == "/api/v1/stock/quote/CSCO/2026-02-13"

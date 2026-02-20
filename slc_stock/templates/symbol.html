@@ -9,7 +9,10 @@
 {% block content %}
 <div class="symbol-page">
   <header class="symbol-header">
-    <h1>{{ symbol }}</h1>
+    <div class="section-heading">
+      <h1>{{ symbol }}</h1>
+      <span class="api-link" data-url="/api/v1/stock/quote/{{ symbol }}" onclick="copyApiUrl(this)">API</span>
+    </div>
     {% if latest %}
     <div class="latest-price">
       <span class="price">${{ "%.2f" | format(latest.close) }}</span>
@@ -24,7 +27,10 @@
   </header>
 
   <section class="chart-section">
-    <h2>Price History</h2>
+    <div class="section-heading">
+      <h2>Price History</h2>
+      <span id="chart-api-link" class="api-link" data-url="/api/v1/stock/history/{{ symbol }}?years=3" onclick="copyApiUrl(this)">API</span>
+    </div>
     <div class="range-buttons">
       <button onclick="loadChart(this, '{{ symbol }}', 30)" class="btn-sm">1M</button>
       <button onclick="loadChart(this, '{{ symbol }}', 90)" class="btn-sm">3M</button>
@@ -54,7 +60,10 @@
 
   <div class="symbol-grid">
     <section class="cache-info">
-      <h2>Cache Info</h2>
+      <div class="section-heading">
+        <h2>Cache Info</h2>
+        <span class="api-link" data-url="/api/v1/stock/info/{{ symbol }}" onclick="copyApiUrl(this)">API</span>
+      </div>
       {% if info %}
       <dl>
         <dt>Total Quotes</dt><dd>{{ info.total_quotes }}</dd>
@@ -100,6 +109,9 @@ let chartInstance = null;
 function loadChart(btn, symbol, days) {
   document.querySelectorAll('.range-buttons .btn-sm').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+  var years = Math.max(1, Math.round(days / 365));
+  var link = document.getElementById('chart-api-link');
+  if (link) link.dataset.url = '/api/v1/stock/history/' + symbol + '?years=' + years;
   htmx.ajax('GET', '/ui/chart-data/' + symbol + '?days=' + days, {target: '#chart-data-holder', swap: 'innerHTML'});
 }
 

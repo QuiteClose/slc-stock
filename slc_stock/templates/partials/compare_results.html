@@ -1,4 +1,7 @@
 {% if quotes %}
+<div style="text-align: right; margin-bottom: 0.25rem;">
+  <span class="api-link" data-url="/api/v1/stock/quote/{{ symbol }}/{{ date }}?provider=all" onclick="copyApiUrl(this)">API</span>
+</div>
 <table>
   <thead>
     <tr>

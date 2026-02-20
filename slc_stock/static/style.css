@@ -243,6 +243,25 @@ dd { margin: 0; }
 }
 #prefetch-status { margin-top: 0.5rem; font-size: 0.9rem; }
 
+/* API link badge */
+.api-link {
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.1rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  user-select: none;
+  transition: all 0.15s;
+  vertical-align: middle;
+  margin-left: 0.5rem;
+}
+.api-link:hover { color: var(--accent); border-color: var(--accent); }
+
+/* Section headings with inline API links */
+.section-heading { display: flex; align-items: baseline; gap: 0.5rem; }
+
 /* Utilities */
 .muted { color: var(--text-muted); }
 .error { color: var(--error); }

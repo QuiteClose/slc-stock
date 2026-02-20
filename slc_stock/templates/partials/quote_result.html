@@ -1,4 +1,7 @@
 <div class="quote-card">
+  <div style="text-align: right; margin-bottom: 0.25rem;">
+    <span class="api-link" data-url="/api/v1/stock/quote/{{ q.symbol }}/{{ q.date }}" onclick="copyApiUrl(this)">API</span>
+  </div>
   <dl class="inline">
     <dt>Date</dt><dd>{{ q.date }}</dd>
     {% if q.requested_date and q.requested_date != q.date %}

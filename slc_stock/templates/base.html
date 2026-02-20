@@ -9,6 +9,16 @@
           integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+"
           crossorigin="anonymous"></script>
   {% block head %}{% endblock %}
+  <script>
+  function copyApiUrl(el) {
+    var url = window.location.origin + el.dataset.url;
+    navigator.clipboard.writeText(url).then(function() {
+      var orig = el.textContent;
+      el.textContent = 'Copied!';
+      setTimeout(function() { el.textContent = orig; }, 1500);
+    });
+  }
+  </script>
 </head>
 <body>
   <nav>

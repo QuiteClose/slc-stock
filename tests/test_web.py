@@ -74,6 +74,38 @@ class TestHtmxPartials:
         assert resp.status_code == 400
 
 
+class TestApiLinks:
+    """API link badges should appear on data sections with correct data-url."""
+
+    def test_symbol_page_has_api_links(self, client):
+        resp = client.get("/symbol/CSCO")
+        assert b'class="api-link"' in resp.data
+        assert b'data-url="/api/v1/stock/quote/CSCO"' in resp.data
+
+    def test_symbol_page_has_chart_api_link(self, client):
+        resp = client.get("/symbol/CSCO")
+        assert b'data-url="/api/v1/stock/history/CSCO?years=3"' in resp.data
+
+    def test_symbol_page_has_cache_info_api_link(self, client):
+        resp = client.get("/symbol/CSCO")
+        assert b'data-url="/api/v1/stock/info/CSCO"' in resp.data
+
+    def test_dashboard_has_api_link(self, client):
+        resp = client.get("/")
+        assert b'data-url="/api/v1/stock/info"' in resp.data
+
+    def test_quote_partial_has_api_link(self, client):
+        resp = client.get("/ui/quote/CSCO/2026-02-13")
+        assert b'class="api-link"' in resp.data
+        assert b'data-url="/api/v1/stock/quote/CSCO/2026-02-13"' in resp.data
+
+    def test_compare_partial_has_api_link(self, client):
+        client.get("/api/v1/stock/quote/CSCO/2026-02-13")
+        resp = client.get("/ui/compare?symbol=CSCO&date=2026-02-13")
+        assert b'class="api-link"' in resp.data
+        assert b'data-url="/api/v1/stock/quote/CSCO/2026-02-13?provider=all"' in resp.data
+
+
 class TestHtmlEscaping:
     """Issue 2: error messages must not contain raw HTML."""
 

@@ -84,3 +84,11 @@ def test_seeded_cache_status_shows_symbols(page: Page, seeded_server):
     status = page.locator(".status-section")
     expect(status).to_contain_text("System Status")
     expect(status).to_contain_text("Total Symbols")
+
+
+def test_dashboard_has_api_link(page: Page, server):
+    """Dashboard should have an API link badge for cached symbols."""
+    page.goto(server.url("/"))
+    link = page.locator(".symbols-section .api-link")
+    expect(link).to_be_visible()
+    assert link.get_attribute("data-url") == "/api/v1/stock/info"

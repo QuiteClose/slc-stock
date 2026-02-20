@@ -16,7 +16,10 @@
 
   <div class="dashboard-grid">
     <section class="symbols-section">
-      <h2>Cached Symbols</h2>
+      <div class="section-heading">
+        <h2>Cached Symbols</h2>
+        <span class="api-link" data-url="/api/v1/stock/info" onclick="copyApiUrl(this)">API</span>
+      </div>
       {% if cache.symbols %}
       <table>
         <thead>
