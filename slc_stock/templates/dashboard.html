@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — slc-stock{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+  <section class="search-section">
+    <h2>Look Up a Symbol</h2>
+    <form class="search-form" onsubmit="return false;">
+      <input type="text" name="q" placeholder="Enter symbol (e.g. CSCO)"
+             hx-get="/ui/search" hx-trigger="input changed delay:300ms, keyup[key=='Enter']"
+             hx-target="#search-results" hx-params="*"
+             autocomplete="off" autofocus>
+    </form>
+    <div id="search-results"></div>
+  </section>
+
+  <div class="dashboard-grid">
+    <section class="symbols-section">
+      <h2>Cached Symbols</h2>
+      {% if cache.symbols %}
+      <table>
+        <thead>
+          <tr>
+            <th>Symbol</th>
+            <th>Quotes</th>
+            <th>Range</th>
+            <th>Providers</th>
+            <th>Last Fetched</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in cache.symbols %}
+          <tr onclick="window.location='/symbol/{{ s.symbol }}'" class="clickable">
+            <td><strong>{{ s.symbol }}</strong></td>
+            <td>{{ s.total_quotes }}</td>
+            <td>{{ s.earliest or '—' }} → {{ s.latest or '—' }}</td>
+            <td>{{ s.providers | join(', ') }}</td>
+            <td>{{ s.last_fetched[:16] if s.last_fetched else '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="muted">No data cached yet. Use the search bar above or the CLI to prefetch data.</p>
+      {% endif %}
+    </section>
+
+    <aside class="status-section"
+           hx-get="/ui/cache-status" hx-trigger="every 10s" hx-swap="innerHTML">
+      {% include "partials/cache_status.html" %}
+    </aside>
+  </div>
+</div>
+{% endblock %}

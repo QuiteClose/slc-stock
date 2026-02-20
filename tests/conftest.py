@@ -99,10 +99,12 @@ def service():
 
 @pytest.fixture()
 def app():
-    from slc_stock.app import create_app
-    application = create_app()
+    import slc_stock.app as app_module
+    app_module._svc = None
+    application = app_module.create_app()
     application.config["TESTING"] = True
-    return application
+    yield application
+    app_module._svc = None
 
 
 @pytest.fixture()

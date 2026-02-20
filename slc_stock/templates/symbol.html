@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}{{ symbol }} — slc-stock{% endblock %}
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"
+        integrity="sha384-hlFGeqDAVJxhKPkME+Jci/BEClAhMsrXhGfUJltNz5NjQqxmFHmb/DKuqaFDIHV"
+        crossorigin="anonymous"></script>
+{% endblock %}
+
+{% block content %}
+<div class="symbol-page">
+  <header class="symbol-header">
+    <h1>{{ symbol }}</h1>
+    {% if latest %}
+    <div class="latest-price">
+      <span class="price">${{ "%.2f" | format(latest.close) }}</span>
+      <span class="date">{{ latest.date }}</span>
+      {% if latest.requested_date and latest.requested_date != latest.date %}
+      <span class="fallback-note">(as of {{ latest.date }}, requested {{ latest.requested_date }})</span>
+      {% endif %}
+    </div>
+    {% else %}
+    <p class="muted">No cached quote yet.</p>
+    {% endif %}
+  </header>
+
+  <section class="chart-section">
+    <h2>Price History</h2>
+    <div class="range-buttons">
+      <button onclick="loadChart('{{ symbol }}', 0.08)" class="btn-sm">1M</button>
+      <button onclick="loadChart('{{ symbol }}', 0.25)" class="btn-sm">3M</button>
+      <button onclick="loadChart('{{ symbol }}', 0.5)" class="btn-sm">6M</button>
+      <button onclick="loadChart('{{ symbol }}', 1)" class="btn-sm">1Y</button>
+      <button onclick="loadChart('{{ symbol }}', 3)" class="btn-sm active">3Y</button>
+      <button onclick="loadChart('{{ symbol }}', 10)" class="btn-sm">All</button>
+    </div>
+    <div class="chart-container">
+      <canvas id="priceChart"></canvas>
+    </div>
+    <div id="chart-data-holder"
+         hx-get="/ui/chart-data/{{ symbol }}?years=3"
+         hx-trigger="load"
+         hx-swap="innerHTML"></div>
+  </section>
+
+  <section class="quote-lookup">
+    <h2>Quote Lookup</h2>
+    <form onsubmit="return false;" class="lookup-form">
+      <input type="date" id="lookup-date"
+             hx-get="/ui/quote/{{ symbol }}/{value}"
+             hx-trigger="change"
+             hx-target="#quote-result"
+             hx-include="[id='lookup-date']"
+             hx-vals='js:{}'
+             onchange="this.setAttribute('hx-get', '/ui/quote/{{ symbol }}/' + this.value); htmx.trigger(this, 'change')">
+      <div id="quote-result"></div>
+    </form>
+  </section>
+
+  <div class="symbol-grid">
+    <section class="cache-info">
+      <h2>Cache Info</h2>
+      {% if info %}
+      <dl>
+        <dt>Total Quotes</dt><dd>{{ info.total_quotes }}</dd>
+        <dt>Date Range</dt><dd>{{ info.date_range.earliest or '—' }} → {{ info.date_range.latest or '—' }}</dd>
+        <dt>Providers</dt><dd>{{ info.providers | join(', ') }}</dd>
+      </dl>
+      {% if info.by_provider %}
+      <table class="compact">
+        <thead><tr><th>Provider</th><th>Count</th><th>Earliest</th><th>Latest</th></tr></thead>
+        <tbody>
+          {% for prov, data in info.by_provider.items() %}
+          <tr>
+            <td>{{ prov }}</td>
+            <td>{{ data.count }}</td>
+            <td>{{ data.earliest or '—' }}</td>
+            <td>{{ data.latest or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+      {% else %}
+      <p class="muted">No data cached for {{ symbol }}.</p>
+      {% endif %}
+    </section>
+
+    <section class="prefetch-section">
+      <h2>Prefetch</h2>
+      <button class="btn"
+              hx-post="/api/v1/stock/prefetch/{{ symbol }}"
+              hx-swap="innerHTML"
+              hx-target="#prefetch-status">
+        Fetch 3yr History
+      </button>
+      <div id="prefetch-status"></div>
+    </section>
+  </div>
+</div>
+
+<script>
+let chartInstance = null;
+
+function loadChart(symbol, years) {
+  document.querySelectorAll('.range-buttons .btn-sm').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  htmx.ajax('GET', '/ui/chart-data/' + symbol + '?years=' + years, {target: '#chart-data-holder', swap: 'innerHTML'});
+}
+
+function renderChart(labels, data) {
+  const ctx = document.getElementById('priceChart');
+  if (!ctx) return;
+  if (chartInstance) chartInstance.destroy();
+  chartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Close',
+        data: data,
+        borderColor: 'rgb(59, 130, 246)',
+        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        fill: true,
+        tension: 0.1,
+        pointRadius: 0,
+        borderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { display: true, ticks: { maxTicksLimit: 8 } },
+        y: { display: true, ticks: { callback: v => '$' + v.toFixed(2) } }
+      },
+      interaction: { intersect: false, mode: 'index' },
+    }
+  });
+}
+</script>
+{% endblock %}

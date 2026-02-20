@@ -1,0 +1,14 @@
+<div class="quote-card">
+  <dl class="inline">
+    <dt>Date</dt><dd>{{ q.date }}</dd>
+    {% if q.requested_date and q.requested_date != q.date %}
+    <dt>Requested</dt><dd>{{ q.requested_date }} <span class="muted">(market closed, showing nearest)</span></dd>
+    {% endif %}
+    <dt>Open</dt><dd>{{ "%.2f" | format(q.open) if q.open is not none else '—' }}</dd>
+    <dt>High</dt><dd>{{ "%.2f" | format(q.high) if q.high is not none else '—' }}</dd>
+    <dt>Low</dt><dd>{{ "%.2f" | format(q.low) if q.low is not none else '—' }}</dd>
+    <dt>Close</dt><dd><strong>{{ "%.2f" | format(q.close) if q.close is not none else '—' }}</strong></dd>
+    <dt>Volume</dt><dd>{{ "{:,.0f}".format(q.volume) if q.volume is not none else '—' }}</dd>
+    <dt>Provider</dt><dd>{{ q.provider }}</dd>
+  </dl>
+</div>

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Compare — slc-stock{% endblock %}
+
+{% block content %}
+<div class="compare-page">
+  <h1>Provider Comparison</h1>
+  <p class="muted">Compare OHLCV data across providers for a given symbol and date.</p>
+
+  <form class="compare-form" onsubmit="return false;">
+    <input type="text" name="symbol" placeholder="Symbol (e.g. CSCO)" autocomplete="off">
+    <input type="date" name="date">
+    <button class="btn"
+            hx-get="/ui/compare"
+            hx-include="closest form"
+            hx-target="#compare-results">
+      Compare
+    </button>
+  </form>
+
+  <div id="compare-results"></div>
+</div>
+{% endblock %}

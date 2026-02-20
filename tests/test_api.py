@@ -1,13 +1,13 @@
 class TestHealthEndpoint:
     def test_health(self, client):
-        resp = client.get("/health")
+        resp = client.get("/api/v1/health")
         assert resp.status_code == 200
         assert resp.get_json()["status"] == "ok"
 
 
 class TestQuoteEndpoint:
     def test_quote_with_date(self, client):
-        resp = client.get("/stock/quote/CSCO/2026-02-13")
+        resp = client.get("/api/v1/stock/quote/CSCO/2026-02-13")
         assert resp.status_code == 200
         data = resp.get_json()
         assert data["symbol"] == "CSCO"
@@ -15,29 +15,29 @@ class TestQuoteEndpoint:
         assert "close" in data
 
     def test_quote_latest(self, client):
-        resp = client.get("/stock/quote/CSCO")
+        resp = client.get("/api/v1/stock/quote/CSCO")
         assert resp.status_code == 200
         data = resp.get_json()
         assert data["symbol"] == "CSCO"
 
     def test_quote_invalid_date(self, client):
-        resp = client.get("/stock/quote/CSCO/not-a-date")
+        resp = client.get("/api/v1/stock/quote/CSCO/not-a-date")
         assert resp.status_code == 400
 
     def test_quote_invalid_symbol(self, client):
-        resp = client.get("/stock/quote/FAKESYMBOL/2026-02-13")
+        resp = client.get("/api/v1/stock/quote/FAKESYMBOL/2026-02-13")
         assert resp.status_code == 400
         assert "not found" in resp.get_json()["error"].lower()
 
     def test_quote_fallback_on_holiday(self, client):
-        resp = client.get("/stock/quote/CSCO/2026-02-16")
+        resp = client.get("/api/v1/stock/quote/CSCO/2026-02-16")
         assert resp.status_code == 200
         data = resp.get_json()
         assert data["date"] == "2026-02-13"
         assert data["requested_date"] == "2026-02-16"
 
     def test_quote_provider_all(self, client):
-        resp = client.get("/stock/quote/CSCO/2026-02-13?provider=all")
+        resp = client.get("/api/v1/stock/quote/CSCO/2026-02-13?provider=all")
         assert resp.status_code == 200
         data = resp.get_json()
         assert "quotes" in data
@@ -45,18 +45,18 @@ class TestQuoteEndpoint:
 
 class TestInfoEndpoint:
     def test_info_inventory_empty(self, client):
-        resp = client.get("/stock/info")
+        resp = client.get("/api/v1/stock/info")
         assert resp.status_code == 200
         data = resp.get_json()
         assert data["total_quotes"] == 0
 
     def test_info_symbol_not_cached(self, client):
-        resp = client.get("/stock/info/ZZZZ")
+        resp = client.get("/api/v1/stock/info/ZZZZ")
         assert resp.status_code == 404
 
     def test_info_symbol_after_quote(self, client):
-        client.get("/stock/quote/CSCO/2026-02-13")
-        resp = client.get("/stock/info/CSCO")
+        client.get("/api/v1/stock/quote/CSCO/2026-02-13")
+        resp = client.get("/api/v1/stock/info/CSCO")
         assert resp.status_code == 200
         data = resp.get_json()
         assert data["symbol"] == "CSCO"
@@ -65,8 +65,22 @@ class TestInfoEndpoint:
 
 class TestHistoryEndpoint:
     def test_history(self, client):
-        resp = client.get("/stock/history/CSCO?years=1")
+        resp = client.get("/api/v1/stock/history/CSCO?years=1")
         assert resp.status_code == 200
         data = resp.get_json()
         assert data["symbol"] == "CSCO"
         assert "quotes" in data
+
+
+class TestPrefetchEndpoint:
+    def test_prefetch_start(self, client):
+        resp = client.post("/api/v1/stock/prefetch/CSCO")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["status"] in ("started", "already_in_progress")
+        assert data["symbol"] == "CSCO"
+
+    def test_prefetch_invalid_symbol(self, client):
+        resp = client.post("/api/v1/stock/prefetch/FAKESYMBOL")
+        assert resp.status_code == 400
+        assert "not found" in resp.get_json()["error"].lower()

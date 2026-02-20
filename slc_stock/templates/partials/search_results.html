@@ -1,0 +1,10 @@
+<div class="search-result">
+  <a href="/symbol/{{ symbol }}" class="search-link">
+    <strong>{{ symbol }}</strong>
+    {% if cached %}
+      <span class="badge cached">Cached ({{ info.total_quotes }} quotes)</span>
+    {% else %}
+      <span class="badge uncached">Not yet cached</span>
+    {% endif %}
+  </a>
+</div>

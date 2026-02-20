@@ -1,6 +1,6 @@
 # slc-stock
 
-Local stock quote API backed by SQLite with pluggable data providers (yfinance, Alpha Vantage, Polygon.io). Serves OHLCV data over HTTP on localhost, with a CLI for bulk prefetch and database management.
+Local stock quote API and web interface backed by SQLite with pluggable data providers (yfinance, Alpha Vantage, Polygon.io). Serves OHLCV data over HTTP on localhost, with a CLI for bulk prefetch and database management.
 
 ## Prerequisites
 
@@ -17,7 +17,7 @@ pip install -r requirements.txt
 cp .env.example .env
 # Edit .env to add API keys if using Alpha Vantage or Polygon
 
-# Start the API server
+# Start the server (API + web UI)
 python -m slc_stock.app
 
 # Or pre-fetch history first
@@ -26,16 +26,26 @@ python -m slc_stock.cli prefetch CSCO --years 3
 
 The SQLite database is created automatically at `instance/quotes.db` on first run.
 
+## Web Interface
+
+Open `http://localhost:5000/` in a browser. The web interface provides:
+
+- **Dashboard** (`/`) — search bar with instant results, cached symbols table, system status sidebar (auto-refreshes)
+- **Symbol detail** (`/symbol/<SYMBOL>`) — price chart (Chart.js with 1M/3M/6M/1Y/3Y/All ranges), quote lookup by date, cache info panel, and a prefetch button
+- **Compare** (`/compare`) — enter a symbol and date to see OHLCV from all providers side by side
+
+The UI uses htmx for dynamic updates (no full page reloads) and Chart.js for price charts. Both are loaded from CDN with SRI integrity hashes.
+
 ## API Reference
 
-All endpoints return JSON. The server runs on `http://localhost:5000` by default.
+All JSON endpoints live under `/api/v1/`. The server runs on `http://localhost:5000` by default.
 
-### `GET /stock/quote/<SYMBOL>`
+### `GET /api/v1/stock/quote/<SYMBOL>`
 
 Returns the latest available quote. If the market is closed, falls back to the most recent trading day.
 
 ```bash
-curl http://localhost:5000/stock/quote/CSCO
+curl http://localhost:5000/api/v1/stock/quote/CSCO
 ```
 
 ```json
@@ -54,12 +64,12 @@ curl http://localhost:5000/stock/quote/CSCO
 }
 ```
 
-### `GET /stock/quote/<SYMBOL>/<YYYY-MM-DD>`
+### `GET /api/v1/stock/quote/<SYMBOL>/<YYYY-MM-DD>`
 
 Returns OHLCV for a specific day. If the market was closed that day (weekend, holiday), the response automatically falls back to the most recent prior trading day. The `requested_date` field shows what was originally asked for; `date` shows what was actually returned.
 
 ```bash
-curl http://localhost:5000/stock/quote/CSCO/2026-02-16
+curl http://localhost:5000/api/v1/stock/quote/CSCO/2026-02-16
 ```
 
 ```json
@@ -75,23 +85,37 @@ curl http://localhost:5000/stock/quote/CSCO/2026-02-16
 Add `?provider=all` to compare across all cached providers:
 
 ```bash
-curl http://localhost:5000/stock/quote/CSCO/2025-10-10?provider=all
+curl http://localhost:5000/api/v1/stock/quote/CSCO/2025-10-10?provider=all
 ```
 
-### `GET /stock/history/<SYMBOL>?years=3`
+### `GET /api/v1/stock/history/<SYMBOL>?years=3`
 
 Returns stored daily history from the database. Optional query params: `years` (default 3), `provider`.
 
 ```bash
-curl http://localhost:5000/stock/history/CSCO?years=1
+curl http://localhost:5000/api/v1/stock/history/CSCO?years=1
 ```
 
-### `GET /stock/info`
+### `POST /api/v1/stock/prefetch/<SYMBOL>`
+
+Triggers a background prefetch of historical data. Returns immediately.
+
+```bash
+curl -X POST http://localhost:5000/api/v1/stock/prefetch/CSCO
+```
+
+```json
+{"status": "started", "symbol": "CSCO"}
+```
+
+If already in progress: `{"status": "already_in_progress", "symbol": "CSCO"}`
+
+### `GET /api/v1/stock/info`
 
 Cache inventory -- shows all symbols in the database, quote counts, date ranges, provider configuration, and any background prefetch threads in flight. Useful for debugging.
 
 ```bash
-curl http://localhost:5000/stock/info
+curl http://localhost:5000/api/v1/stock/info
 ```
 
 ```json
@@ -108,18 +132,18 @@ curl http://localhost:5000/stock/info
 }
 ```
 
-### `GET /stock/info/<SYMBOL>`
+### `GET /api/v1/stock/info/<SYMBOL>`
 
 Per-symbol detail with provider-by-provider breakdown.
 
 ```bash
-curl http://localhost:5000/stock/info/CSCO
+curl http://localhost:5000/api/v1/stock/info/CSCO
 ```
 
-### `GET /health`
+### `GET /api/v1/health`
 
 ```bash
-curl http://localhost:5000/health
+curl http://localhost:5000/api/v1/health
 ```
 
 ## CLI Reference
@@ -203,6 +227,8 @@ All settings are loaded from environment variables (`.env` file supported via py
 - **Background prefetch**: The first time a new symbol is queried, a daemon thread automatically downloads its full history (configurable via `PREFETCH_YEARS`). Subsequent queries are served from cache.
 - **Multi-provider storage**: Each provider's data is stored independently (unique constraint on symbol+date+provider), enabling cross-reference and comparison.
 - **Symbol validation**: Invalid symbols are rejected before any database writes occur (HTTP 400).
+- **API versioning**: All JSON endpoints are namespaced under `/api/v1/` via a Flask Blueprint. The web UI lives on root paths (`/`, `/symbol/<sym>`, `/compare`).
+- **Web UI**: Server-rendered Jinja2 templates with htmx for partial page updates and Chart.js for interactive price charts. No build step required.
 
 ## Running Tests
 

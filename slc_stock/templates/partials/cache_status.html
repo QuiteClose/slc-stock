@@ -1,0 +1,10 @@
+<h3>System Status</h3>
+<dl>
+  <dt>Total Symbols</dt><dd>{{ cache.total_symbols }}</dd>
+  <dt>Total Quotes</dt><dd>{{ cache.total_quotes }}</dd>
+  <dt>DB Size</dt><dd>{{ cache.database_size_mb }} MB</dd>
+  <dt>DB Path</dt><dd class="mono">{{ cache.database_path or '—' }}</dd>
+  {% if cache.prefetch_in_flight %}
+  <dt>Prefetching</dt><dd>{{ cache.prefetch_in_flight | join(', ') }}</dd>
+  {% endif %}
+</dl>

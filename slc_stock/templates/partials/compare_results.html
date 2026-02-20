@@ -1,0 +1,30 @@
+{% if quotes %}
+<table>
+  <thead>
+    <tr>
+      <th>Provider</th>
+      <th>Open</th>
+      <th>High</th>
+      <th>Low</th>
+      <th>Close</th>
+      <th>Volume</th>
+      <th>Adjusted</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for q in quotes %}
+    <tr>
+      <td>{{ q.provider }}</td>
+      <td>{{ "%.2f" | format(q.open) if q.open is not none else '—' }}</td>
+      <td>{{ "%.2f" | format(q.high) if q.high is not none else '—' }}</td>
+      <td>{{ "%.2f" | format(q.low) if q.low is not none else '—' }}</td>
+      <td><strong>{{ "%.2f" | format(q.close) if q.close is not none else '—' }}</strong></td>
+      <td>{{ "{:,.0f}".format(q.volume) if q.volume is not none else '—' }}</td>
+      <td>{{ 'Yes' if q.adjusted else 'No' }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% elif quotes is defined %}
+<p class="muted">No provider data found for {{ symbol }} on {{ date }}.</p>
+{% endif %}
